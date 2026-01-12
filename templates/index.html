@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Care Plan Generator</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: 600;
+            color: #444;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        textarea {
+            height: 150px;
+            resize: vertical;
+        }
+        button {
+            margin-top: 25px;
+            padding: 12px 30px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .required::after {
+            content: " *";
+            color: red;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        #result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        #result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .warnings {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .warnings ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        #plan-output {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .download-btn {
+            margin-top: 15px;
+            background: #28a745;
+        }
+        .download-btn:hover {
+            background: #1e7e34;
+        }
+        small {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Care Plan Generator</h1>
+    
+    <form id="careplan-form">
+        <label class="required" for="patient_first_name">Patient First Name</label>
+        <input type="text" id="patient_first_name" name="patient_first_name" required>
+        
+        <label class="required" for="patient_last_name">Patient Last Name</label>
+        <input type="text" id="patient_last_name" name="patient_last_name" required>
+        
+        <label class="required" for="referring_provider">Referring Provider</label>
+        <input type="text" id="referring_provider" name="referring_provider" required>
+        
+        <label class="required" for="referring_provider_npi">Referring Provider NPI</label>
+        <input type="text" id="referring_provider_npi" name="referring_provider_npi" required 
+               pattern="\d{10}" maxlength="10" placeholder="10-digit number">
+        <small>Must be exactly 10 digits</small>
+        
+        <label class="required" for="patient_mrn">Patient MRN</label>
+        <input type="text" id="patient_mrn" name="patient_mrn" required 
+               pattern="\d{6}" maxlength="6" placeholder="6-digit number">
+        <small>Must be exactly 6 digits</small>
+        
+        <label class="required" for="primary_diagnosis">Primary Diagnosis (ICD-10)</label>
+        <input type="text" id="primary_diagnosis" name="primary_diagnosis" required 
+               placeholder="e.g., E11.9">
+        <small>Format: Letter + 2 digits, optional decimal (e.g., E11.9, J45.20)</small>
+        
+        <label class="required" for="medication_name">Medication Name</label>
+        <input type="text" id="medication_name" name="medication_name" required>
+        
+        <label for="additional_diagnoses">Additional Diagnoses (ICD-10)</label>
+        <input type="text" id="additional_diagnoses" name="additional_diagnoses" 
+               placeholder="Comma-separated, e.g., I10, E78.5">
+        
+        <label for="medication_history">Medication History</label>
+        <input type="text" id="medication_history" name="medication_history" 
+               placeholder="Comma-separated list of medications">
+        
+        <label for="patient_records">Patient Records</label>
+        <textarea id="patient_records" name="patient_records" 
+                  placeholder="Paste patient clinical records here..."></textarea>
+        
+        <button type="submit" id="submit-btn">Generate Care Plan</button>
+    </form>
+    
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('careplan-form');
+        const resultDiv = document.getElementById('result');
+        const submitBtn = document.getElementById('submit-btn');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Generating...';
+            resultDiv.style.display = 'none';
+            
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch('/submit', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = '';
+                    
+                    if (data.warnings && data.warnings.length > 0) {
+                        html += '<div class="warnings"><strong>Warnings:</strong><ul>';
+                        data.warnings.forEach(w => {
+                            html += `<li>${w}</li>`;
+                        });
+                        html += '</ul></div>';
+                    }
+                    
+                    html += `<p><strong>Care Plan ID:</strong> ${data.id}</p>`;
+                    html += `<div id="plan-output">${data.generated_plan}</div>`;
+                    html += `<button class="download-btn" onclick="downloadPlan()">Download Care Plan</button>`;
+                    
+                    resultDiv.innerHTML = html;
+                    resultDiv.className = 'success';
+                    resultDiv.style.display = 'block';
+                    
+                    // Store for download
+                    window.generatedPlan = data.generated_plan;
+                    window.patientName = formData.get('patient_first_name') + '_' + formData.get('patient_last_name');
+                } else {
+                    resultDiv.innerHTML = `<strong>Validation Errors:</strong><ul>${data.errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+                    resultDiv.className = 'error';
+                    resultDiv.style.display = 'block';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                resultDiv.className = 'error';
+                resultDiv.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generate Care Plan';
+            }
+        });
+        
+        function downloadPlan() {
+            const blob = new Blob([window.generatedPlan], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `care_plan_${window.patientName}_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
