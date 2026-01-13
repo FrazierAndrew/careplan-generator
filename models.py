@@ -2,6 +2,14 @@ from typing import List
 from pydantic import BaseModel, Field, field_validator
 import re
 
+# ICD-10 pattern: letter followed by 2 digits, optional decimal with 1-4 digits
+ICD10_PATTERN = r"^[A-Z]\d{2}(\.\d{1,4})?$"
+
+
+def is_valid_icd10(code: str) -> bool:
+    """Check if a string is a valid ICD-10 code."""
+    return bool(re.match(ICD10_PATTERN, code.upper()))
+
 
 class CarePlanRequest(BaseModel):
     patient_first_name: str = Field(..., min_length=1)
@@ -36,11 +44,20 @@ class CarePlanRequest(BaseModel):
     @field_validator("primary_diagnosis")
     @classmethod
     def validate_primary_diagnosis(cls, v: str) -> str:
-        # Basic ICD-10 format: letter followed by digits, optional decimal
-        pattern = r"^[A-Z]\d{2}(\.\d{1,4})?$"
-        if not re.match(pattern, v.upper()):
+        if not is_valid_icd10(v):
             raise ValueError("Primary diagnosis must be a valid ICD-10 code (e.g., E11.9)")
         return v.upper()
+
+    @field_validator("additional_diagnoses")
+    @classmethod
+    def validate_additional_diagnoses(cls, v: str) -> str:
+        if not v or not v.strip():
+            return ""
+        codes = [c.strip() for c in v.split(",") if c.strip()]
+        invalid = [c for c in codes if not is_valid_icd10(c)]
+        if invalid:
+            raise ValueError(f"Invalid ICD-10 code(s): {', '.join(invalid)}")
+        return ", ".join(c.upper() for c in codes)
 
 
 class CarePlanResponse(BaseModel):

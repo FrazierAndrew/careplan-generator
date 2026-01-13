@@ -1,6 +1,6 @@
 # Care Plan Generator
 
-A bare-bones web application for specialty pharmacies to generate patient care plans using AI.
+A web application for specialty pharmacies to automatically generate patient care plans using AI.
 
 ## Setup
 
@@ -22,16 +22,16 @@ A bare-bones web application for specialty pharmacies to generate patient care p
 
 4. **Run the application:**
    ```bash
-   python main.py
+   uvicorn main:app --reload --port 8001
    ```
 
 5. **Open in browser:**
-   Navigate to http://localhost:8000
+   Navigate to http://localhost:8001
 
 ## Features
 
 - HTML web form for patient data entry
-- Pydantic validation for all inputs
+- Pydantic validation for all inputs (NPI, MRN, ICD-10 codes)
 - SQLite database for storing care plans
 - OpenAI integration for generating care plans
 - Duplicate detection warnings for:
@@ -39,6 +39,13 @@ A bare-bones web application for specialty pharmacies to generate patient care p
   - Orders (same patient, medication, diagnosis)
   - Providers (NPI mismatches)
 - Download generated care plan as text file
+- CSV export for pharma reporting (`GET /export`)
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
 
 ## Environment Variables
 
@@ -49,11 +56,26 @@ A bare-bones web application for specialty pharmacies to generate patient care p
 ## Project Structure
 
 ```
-├── main.py          # FastAPI application
+├── main.py          # FastAPI routes (transport layer)
+├── services.py      # Business logic (duplicate detection, orchestration)
+├── database.py      # SQLite CRUD operations
 ├── models.py        # Pydantic validation models
-├── database.py      # SQLite database functions
+├── llm.py           # OpenAI integration
 ├── templates/
 │   └── index.html   # Web form
-├── requirements.txt # Python dependencies
+├── tests/
+│   ├── test_models.py       # Unit tests for validation
+│   ├── test_services.py     # Unit tests for business logic
+│   └── test_integration.py  # API integration tests
+├── test_api.py      # Manual API test script
+├── requirements.txt
 └── README.md
 ```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Web form for data entry |
+| `/submit` | POST | Submit care plan request |
+| `/export` | GET | Download all care plans as CSV |
