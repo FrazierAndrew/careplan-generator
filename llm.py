@@ -13,26 +13,24 @@ def generate_care_plan(data: CarePlanRequest) -> str:
     
     prompt = f"""Generate a clinical care plan for the following patient:
 
-                Patient: {data.patient_first_name} {data.patient_last_name}
-                MRN: {data.patient_mrn}
-                Referring Provider: {data.referring_provider} (NPI: {data.referring_provider_npi})
-                Primary Diagnosis (ICD-10): {data.primary_diagnosis}
-                Medication: {data.medication_name}
-                Additional Diagnoses: {data.additional_diagnoses or 'None'}
-                Medication History: {data.medication_history or 'None'}
+Patient: {data.patient_first_name} {data.patient_last_name}
+MRN: {data.patient_mrn}
+Referring Provider: {data.referring_provider} (NPI: {data.referring_provider_npi})
+Primary Diagnosis (ICD-10): {data.primary_diagnosis}
+Medication: {data.medication_name}
+Additional Diagnoses: {data.additional_diagnoses or 'None'}
+Medication History: {data.medication_history or 'None'}
 
-                Patient Records:
-                {data.patient_records or 'No additional records provided'}
+Patient Records:
+{data.patient_records or 'No additional records provided'}
 
-                Please generate a comprehensive care plan including:
-                1. Patient Assessment Summary
-                2. Treatment Goals
-                3. Medication Management Plan
-                4. Monitoring Parameters
-                5. Patient Education Points
-                6. Follow-up Schedule
-                7. Care Coordination Notes
-            """
+Please generate a care plan with ONLY the following four sections:
+
+1. Problem List / Drug Therapy Problems (DTPs)
+2. Goals (SMART)
+3. Pharmacist Interventions / Plan
+4. Monitoring Plan & Lab Schedule
+"""
     
     try:
         response = client.chat.completions.create(
