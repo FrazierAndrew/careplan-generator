@@ -85,13 +85,13 @@ async def export_care_plans():
     if not care_plans:
         return JSONResponse(content={"error": "No care plans to export"}, status_code=404)
     
-    # Create CSV in memory
+    # Create CSV in memory - include all fields
     output = io.StringIO()
     fieldnames = [
         "id", "patient_first_name", "patient_last_name", "patient_mrn",
         "referring_provider", "referring_provider_npi", "primary_diagnosis",
         "medication_name", "additional_diagnoses", "medication_history",
-        "created_at"
+        "patient_records", "generated_plan", "created_at"
     ]
     writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
     writer.writeheader()

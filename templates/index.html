@@ -108,10 +108,32 @@
         small {
             color: #666;
         }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .export-btn {
+            padding: 10px 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+        }
+        .export-btn:hover {
+            background: #5a6268;
+        }
     </style>
 </head>
 <body>
-    <h1>Care Plan Generator</h1>
+    <div class="header">
+        <h1>Care Plan Generator</h1>
+        <a href="/export" class="export-btn">Export All to CSV</a>
+    </div>
     
     <form id="careplan-form">
         <label class="required" for="patient_first_name">Patient First Name</label>
