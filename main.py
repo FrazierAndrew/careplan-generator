@@ -4,14 +4,15 @@ Handles request/response, delegates to services for business logic.
 """
 import csv
 import io
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from database import init_db, get_all_care_plans
 from models import CarePlanRequest
-from services import create_care_plan, DuplicateSubmissionError
+from services import create_care_plan, DuplicateSubmissionError, ProviderConflictError
+from pdf_utils import extract_text_from_pdf
 
 app = FastAPI(title="Care Plan Generator")
 templates = Jinja2Templates(directory="templates")
@@ -40,11 +41,34 @@ async def submit_care_plan(
     additional_diagnoses: str = Form(""),
     medication_history: str = Form(""),
     patient_records: str = Form(""),
+    patient_records_file: UploadFile | None = File(None),
 ):
     """
     Submit a new care plan request.
     Validates input, generates care plan via LLM, and saves to database.
+    Accepts optional PDF file upload for patient records.
     """
+    # Combine text input with PDF content if provided
+    combined_records = patient_records
+    if patient_records_file and patient_records_file.filename:
+        if not patient_records_file.filename.lower().endswith(".pdf"):
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "errors": ["Only PDF files are supported for patient records upload"]}
+            )
+        try:
+            file_bytes = await patient_records_file.read()
+            pdf_text = extract_text_from_pdf(file_bytes)
+            if combined_records:
+                combined_records = f"{combined_records}\n\n--- Extracted from PDF ---\n\n{pdf_text}"
+            else:
+                combined_records = pdf_text
+        except ValueError as e:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "errors": [str(e)]}
+            )
+    
     # Validate input
     try:
         data = CarePlanRequest(
@@ -57,7 +81,7 @@ async def submit_care_plan(
             medication_name=medication_name,
             additional_diagnoses=additional_diagnoses,
             medication_history=medication_history,
-            patient_records=patient_records,
+            patient_records=combined_records,
         )
     except ValidationError as e:
         errors = [err["msg"] for err in e.errors()]
@@ -70,6 +94,11 @@ async def submit_care_plan(
     try:
         result = create_care_plan(data)
     except DuplicateSubmissionError as e:
+        return JSONResponse(
+            status_code=409,
+            content={"success": False, "errors": [str(e)]}
+        )
+    except ProviderConflictError as e:
         return JSONResponse(
             status_code=409,
             content={"success": False, "errors": [str(e)]}

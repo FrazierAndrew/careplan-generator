@@ -2,12 +2,13 @@
 Database layer - Pure CRUD operations only.
 No business logic or interpretation of data.
 """
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional, List
 
-DATABASE_PATH = Path("careplan.db")
+DATABASE_PATH = Path(os.environ.get("DATABASE_PATH", "careplan.db"))
 
 
 def get_connection():
@@ -98,17 +99,33 @@ def find_care_plan_by_order(mrn: str, medication_name: str, primary_diagnosis: s
         return dict(row) if row else None
 
 
-def find_duplicate_submission(first_name: str, last_name: str, medication_name: str) -> Optional[dict]:
-    """Find a care plan with same patient name and medication submitted today."""
+def find_duplicate_submission(first_name: str, last_name: str, mrn: str, medication_name: str) -> Optional[dict]:
+    """Find a care plan with same patient (name + MRN) and medication submitted today."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """SELECT * FROM care_plans 
                WHERE LOWER(patient_first_name) = LOWER(?) 
                AND LOWER(patient_last_name) = LOWER(?)
+               AND patient_mrn = ?
                AND LOWER(medication_name) = LOWER(?)
                AND DATE(created_at) = DATE('now')""",
-            (first_name, last_name, medication_name)
+            (first_name, last_name, mrn, medication_name)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def find_previous_submission(mrn: str, medication_name: str) -> Optional[dict]:
+    """Find a care plan with same patient MRN and medication from a previous day."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT * FROM care_plans 
+               WHERE patient_mrn = ?
+               AND LOWER(medication_name) = LOWER(?)
+               AND DATE(created_at) < DATE('now')""",
+            (mrn, medication_name)
         )
         row = cursor.fetchone()
         return dict(row) if row else None

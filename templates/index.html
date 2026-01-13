@@ -35,6 +35,10 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
+        input[type="file"] {
+            padding: 8px;
+            background: #f8f9fa;
+        }
         input:focus, textarea:focus {
             outline: none;
             border-color: #007bff;
@@ -135,7 +139,7 @@
         <a href="/export" class="export-btn">Export All to CSV</a>
     </div>
     
-    <form id="careplan-form">
+    <form id="careplan-form" enctype="multipart/form-data">
         <label class="required" for="patient_first_name">Patient First Name</label>
         <input type="text" id="patient_first_name" name="patient_first_name" required>
         
@@ -171,9 +175,13 @@
         <input type="text" id="medication_history" name="medication_history" 
                placeholder="Comma-separated list of medications">
         
-        <label for="patient_records">Patient Records</label>
+        <label for="patient_records">Patient Records (Text)</label>
         <textarea id="patient_records" name="patient_records" 
                   placeholder="Paste patient clinical records here..."></textarea>
+        
+        <label for="patient_records_file">Patient Records (PDF Upload)</label>
+        <input type="file" id="patient_records_file" name="patient_records_file" accept=".pdf">
+        <small>Optional: Upload a PDF file with patient records. Text will be extracted and combined with the text field above.</small>
         
         <button type="submit" id="submit-btn">Generate Care Plan</button>
     </form>

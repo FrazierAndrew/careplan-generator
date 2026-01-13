@@ -1,6 +1,6 @@
 # Care Plan Generator
 
-A web application for specialty pharmacies to automatically generate patient care plans using AI.
+A web application for pharmacies to automatically generate patient care plans.
 
 ## Setup
 
@@ -28,18 +28,6 @@ A web application for specialty pharmacies to automatically generate patient car
 5. **Open in browser:**
    Navigate to http://localhost:8001
 
-## Features
-
-- HTML web form for patient data entry
-- Pydantic validation for all inputs (NPI, MRN, ICD-10 codes)
-- SQLite database for storing care plans
-- OpenAI integration for generating care plans
-- Duplicate detection warnings for:
-  - Patients (by MRN or name)
-  - Orders (same patient, medication, diagnosis)
-  - Providers (NPI mismatches)
-- Download generated care plan as text file
-- CSV export for pharma reporting (`GET /export`)
 
 ## Running Tests
 
@@ -52,6 +40,7 @@ pytest tests/ -v
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | Your OpenAI API key for care plan generation |
+| `DATABASE_PATH` | No | Path to SQLite database file (default: `careplan.db`) |
 
 ## Project Structure
 
@@ -61,6 +50,7 @@ pytest tests/ -v
 ├── database.py      # SQLite CRUD operations
 ├── models.py        # Pydantic validation models
 ├── llm.py           # OpenAI integration
+├── pdf_utils.py     # PDF text extraction utilities
 ├── templates/
 │   └── index.html   # Web form
 ├── tests/

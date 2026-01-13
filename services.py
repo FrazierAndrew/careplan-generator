@@ -14,6 +14,11 @@ class DuplicateSubmissionError(Exception):
     pass
 
 
+class ProviderConflictError(Exception):
+    """Raised when a provider conflict is detected."""
+    pass
+
+
 @dataclass
 class CarePlanResult:
     """Result of creating a care plan."""
@@ -46,53 +51,40 @@ def check_duplicate_warnings(data: CarePlanRequest) -> List[str]:
                 f"Warning: Patient with name {data.patient_first_name} {data.patient_last_name} may already exist."
             )
     
-    # Check for duplicate order
-    existing_order = db.find_care_plan_by_order(
+    # Check for same patient + same medication on a previous day
+    previous_submission = db.find_previous_submission(
         data.patient_mrn,
-        data.medication_name,
-        data.primary_diagnosis
+        data.medication_name
     )
-    if existing_order:
+    if previous_submission:
         warnings.append(
-            f"Warning: An order for {data.medication_name} with diagnosis "
-            f"{data.primary_diagnosis} already exists for this patient."
+            f"Warning: This patient (MRN: {data.patient_mrn}) already has a care plan "
+            f"for {data.medication_name} from a previous date."
         )
-    
-    # Check for provider conflicts
-    provider_warnings = check_provider_conflicts(
-        data.referring_provider,
-        data.referring_provider_npi
-    )
-    warnings.extend(provider_warnings)
     
     return warnings
 
 
-def check_provider_conflicts(name: str, npi: str) -> List[str]:
+def check_blocking_provider_conflict(name: str, npi: str) -> None:
     """
-    Check for provider data conflicts.
-    Returns warnings if the same provider appears with different NPIs,
-    or the same NPI appears with different provider names.
+    Check for provider conflicts that should block submission.
+    Raises ProviderConflictError if conflict found.
     """
-    warnings = []
-    
-    # Check if NPI exists with a different name
-    existing_by_npi = db.find_provider_by_npi(npi)
-    if existing_by_npi and existing_by_npi["name"].lower() != name.lower():
-        warnings.append(
-            f"Warning: NPI {npi} is already registered to provider "
-            f"'{existing_by_npi['name']}'."
-        )
-    
-    # Check if name exists with a different NPI
+    # Check if provider name exists with a different NPI - this is blocked
     existing_by_name = db.find_provider_by_name(name)
     if existing_by_name and existing_by_name["npi"] != npi:
-        warnings.append(
-            f"Warning: Provider '{name}' is already registered with a different "
-            f"NPI ({existing_by_name['npi']})."
+        raise ProviderConflictError(
+            f"Provider '{name}' is already registered with NPI {existing_by_name['npi']}. "
+            f"Cannot register same provider with different NPI ({npi})."
         )
     
-    return warnings
+    # Check if NPI exists with a different name - this is also blocked
+    existing_by_npi = db.find_provider_by_npi(npi)
+    if existing_by_npi and existing_by_npi["name"].lower() != name.lower():
+        raise ProviderConflictError(
+            f"NPI {npi} is already registered to provider '{existing_by_npi['name']}'. "
+            f"Cannot register different provider name ('{name}') with same NPI."
+        )
 
 
 def check_blocking_duplicate(data: CarePlanRequest) -> None:
@@ -103,12 +95,14 @@ def check_blocking_duplicate(data: CarePlanRequest) -> None:
     existing = db.find_duplicate_submission(
         data.patient_first_name,
         data.patient_last_name,
+        data.patient_mrn,
         data.medication_name
     )
     if existing:
         raise DuplicateSubmissionError(
             f"A care plan for {data.patient_first_name} {data.patient_last_name} "
-            f"with medication {data.medication_name} was already submitted today."
+            f"(MRN: {data.patient_mrn}) with medication {data.medication_name} "
+            f"was already submitted today."
         )
 
 
@@ -117,13 +111,17 @@ def create_care_plan(data: CarePlanRequest) -> CarePlanResult:
     Main business operation: Create a care plan.
     
     1. Block exact duplicates (same patient + medication + today)
-    2. Check for potential duplicates and collect warnings
-    3. Generate care plan via LLM
-    4. Save provider and care plan to database
-    5. Return result with warnings
+    2. Block provider conflicts (same provider with different NPI)
+    3. Check for potential duplicates and collect warnings
+    4. Generate care plan via LLM
+    5. Save provider and care plan to database
+    6. Return result with warnings
     """
     # Block exact duplicates
     check_blocking_duplicate(data)
+    
+    # Block provider conflicts
+    check_blocking_provider_conflict(data.referring_provider, data.referring_provider_npi)
     
     # Collect warnings (does not block)
     warnings = check_duplicate_warnings(data)
