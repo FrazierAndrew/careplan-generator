@@ -110,3 +110,31 @@ class TestAPI:
         assert response.status_code == 200
         assert "text/csv" in response.headers["content-type"]
         assert "patient_first_name" in response.text
+
+    def test_exact_duplicate_same_day_blocked(self, client):
+        # First submission
+        response1 = client.post("/submit", data={
+            "patient_first_name": "Duplicate",
+            "patient_last_name": "Test",
+            "referring_provider": "Dr. Test",
+            "referring_provider_npi": "1234567890",
+            "patient_mrn": "555555",
+            "primary_diagnosis": "E11.9",
+            "medication_name": "SameMed",
+        })
+        assert response1.status_code == 200
+        
+        # Exact same submission (same name + medication + same day) should be blocked
+        response2 = client.post("/submit", data={
+            "patient_first_name": "Duplicate",
+            "patient_last_name": "Test",
+            "referring_provider": "Dr. Test",
+            "referring_provider_npi": "1234567890",
+            "patient_mrn": "555555",
+            "primary_diagnosis": "E11.9",
+            "medication_name": "SameMed",  # Same medication
+        })
+        assert response2.status_code == 409
+        data = response2.json()
+        assert data["success"] is False
+        assert "already submitted today" in data["errors"][0]

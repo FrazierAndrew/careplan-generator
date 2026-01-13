@@ -98,6 +98,22 @@ def find_care_plan_by_order(mrn: str, medication_name: str, primary_diagnosis: s
         return dict(row) if row else None
 
 
+def find_duplicate_submission(first_name: str, last_name: str, medication_name: str) -> Optional[dict]:
+    """Find a care plan with same patient name and medication submitted today."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT * FROM care_plans 
+               WHERE LOWER(patient_first_name) = LOWER(?) 
+               AND LOWER(patient_last_name) = LOWER(?)
+               AND LOWER(medication_name) = LOWER(?)
+               AND DATE(created_at) = DATE('now')""",
+            (first_name, last_name, medication_name)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
 def insert_care_plan(data: dict, generated_plan: str) -> int:
     """Insert a care plan and return the new ID."""
     with get_db() as conn:

@@ -9,6 +9,11 @@ from llm import generate_care_plan
 import database as db
 
 
+class DuplicateSubmissionError(Exception):
+    """Raised when a duplicate submission is detected."""
+    pass
+
+
 @dataclass
 class CarePlanResult:
     """Result of creating a care plan."""
@@ -90,15 +95,36 @@ def check_provider_conflicts(name: str, npi: str) -> List[str]:
     return warnings
 
 
+def check_blocking_duplicate(data: CarePlanRequest) -> None:
+    """
+    Check for exact duplicate submissions that should be blocked.
+    Raises DuplicateSubmissionError if duplicate found.
+    """
+    existing = db.find_duplicate_submission(
+        data.patient_first_name,
+        data.patient_last_name,
+        data.medication_name
+    )
+    if existing:
+        raise DuplicateSubmissionError(
+            f"A care plan for {data.patient_first_name} {data.patient_last_name} "
+            f"with medication {data.medication_name} was already submitted today."
+        )
+
+
 def create_care_plan(data: CarePlanRequest) -> CarePlanResult:
     """
     Main business operation: Create a care plan.
     
-    1. Check for duplicates and collect warnings
-    2. Generate care plan via LLM
-    3. Save provider and care plan to database
-    4. Return result with warnings
+    1. Block exact duplicates (same patient + medication + today)
+    2. Check for potential duplicates and collect warnings
+    3. Generate care plan via LLM
+    4. Save provider and care plan to database
+    5. Return result with warnings
     """
+    # Block exact duplicates
+    check_blocking_duplicate(data)
+    
     # Collect warnings (does not block)
     warnings = check_duplicate_warnings(data)
     

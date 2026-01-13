@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from database import init_db, get_all_care_plans
 from models import CarePlanRequest
-from services import create_care_plan
+from services import create_care_plan, DuplicateSubmissionError
 
 app = FastAPI(title="Care Plan Generator")
 templates = Jinja2Templates(directory="templates")
@@ -67,7 +67,13 @@ async def submit_care_plan(
         )
     
     # Create care plan (business logic)
-    result = create_care_plan(data)
+    try:
+        result = create_care_plan(data)
+    except DuplicateSubmissionError as e:
+        return JSONResponse(
+            status_code=409,
+            content={"success": False, "errors": [str(e)]}
+        )
     
     return JSONResponse(content={
         "success": True,
