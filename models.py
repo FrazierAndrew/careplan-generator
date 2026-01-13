@@ -19,8 +19,8 @@ class CarePlanRequest(BaseModel):
     patient_mrn: str = Field(..., min_length=6, max_length=6)
     primary_diagnosis: str = Field(..., min_length=1)  # ICD-10 code
     medication_name: str = Field(..., min_length=1)
-    additional_diagnoses: str = ""  # Comma-separated ICD-10 codes
-    medication_history: str = ""  # Comma-separated list
+    additional_diagnoses: List[str] = Field(default_factory=list)  # List of ICD-10 codes
+    medication_history: List[str] = Field(default_factory=list)  # List of medication names
     patient_records: str = ""
 
     @field_validator("referring_provider_npi")
@@ -48,16 +48,36 @@ class CarePlanRequest(BaseModel):
             raise ValueError("Primary diagnosis must be a valid ICD-10 code (e.g., E11.9)")
         return v.upper()
 
-    @field_validator("additional_diagnoses")
+    @field_validator("additional_diagnoses", mode="before")
     @classmethod
-    def validate_additional_diagnoses(cls, v: str) -> str:
-        if not v or not v.strip():
-            return ""
-        codes = [c.strip() for c in v.split(",") if c.strip()]
+    def parse_additional_diagnoses(cls, v) -> List[str]:
+        """Parse comma-separated string into list of validated ICD-10 codes."""
+        if isinstance(v, list):
+            codes = [c.strip() for c in v if c and c.strip()]
+        elif isinstance(v, str):
+            if not v or not v.strip():
+                return []
+            codes = [c.strip() for c in v.split(",") if c.strip()]
+        else:
+            return []
+        
         invalid = [c for c in codes if not is_valid_icd10(c)]
         if invalid:
             raise ValueError(f"Invalid ICD-10 code(s): {', '.join(invalid)}")
-        return ", ".join(c.upper() for c in codes)
+        return [c.upper() for c in codes]
+
+    @field_validator("medication_history", mode="before")
+    @classmethod
+    def parse_medication_history(cls, v) -> List[str]:
+        """Parse comma-separated string into list of medication names."""
+        if isinstance(v, list):
+            return [m.strip() for m in v if m and m.strip()]
+        elif isinstance(v, str):
+            if not v or not v.strip():
+                return []
+            return [m.strip() for m in v.split(",") if m.strip()]
+        else:
+            return []
 
 
 class CarePlanResponse(BaseModel):

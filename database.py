@@ -131,6 +131,13 @@ def find_previous_submission(mrn: str, medication_name: str) -> Optional[dict]:
         return dict(row) if row else None
 
 
+def _list_to_csv(value) -> str:
+    """Convert a list to comma-separated string for storage."""
+    if isinstance(value, list):
+        return ", ".join(value)
+    return value or ""
+
+
 def insert_care_plan(data: dict, generated_plan: str) -> int:
     """Insert a care plan and return the new ID."""
     with get_db() as conn:
@@ -150,8 +157,8 @@ def insert_care_plan(data: dict, generated_plan: str) -> int:
                 data["patient_mrn"],
                 data["primary_diagnosis"],
                 data["medication_name"],
-                data.get("additional_diagnoses", ""),
-                data.get("medication_history", ""),
+                _list_to_csv(data.get("additional_diagnoses", [])),
+                _list_to_csv(data.get("medication_history", [])),
                 data.get("patient_records", ""),
                 generated_plan
             )

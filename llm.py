@@ -11,6 +11,10 @@ def generate_care_plan(data: CarePlanRequest) -> str:
     
     client = OpenAI(api_key=api_key)
     
+    # Format lists for display
+    additional_dx = ", ".join(data.additional_diagnoses) if data.additional_diagnoses else "None"
+    med_history = ", ".join(data.medication_history) if data.medication_history else "None"
+    
     prompt = f"""Generate a clinical care plan for the following patient:
 
 Patient: {data.patient_first_name} {data.patient_last_name}
@@ -18,8 +22,8 @@ MRN: {data.patient_mrn}
 Referring Provider: {data.referring_provider} (NPI: {data.referring_provider_npi})
 Primary Diagnosis (ICD-10): {data.primary_diagnosis}
 Medication: {data.medication_name}
-Additional Diagnoses: {data.additional_diagnoses or 'None'}
-Medication History: {data.medication_history or 'None'}
+Additional Diagnoses: {additional_dx}
+Medication History: {med_history}
 
 Patient Records:
 {data.patient_records or 'No additional records provided'}

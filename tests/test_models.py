@@ -79,10 +79,15 @@ class TestCarePlanRequest:
         assert request.primary_diagnosis == "E11.9"
 
     # Additional diagnoses validation
-    def test_additional_diagnoses_valid(self, valid_data):
+    def test_additional_diagnoses_valid_string(self, valid_data):
         valid_data["additional_diagnoses"] = "I10, E78.5"
         request = CarePlanRequest(**valid_data)
-        assert request.additional_diagnoses == "I10, E78.5"
+        assert request.additional_diagnoses == ["I10", "E78.5"]
+
+    def test_additional_diagnoses_valid_list(self, valid_data):
+        valid_data["additional_diagnoses"] = ["I10", "E78.5"]
+        request = CarePlanRequest(**valid_data)
+        assert request.additional_diagnoses == ["I10", "E78.5"]
 
     def test_additional_diagnoses_invalid_code(self, valid_data):
         valid_data["additional_diagnoses"] = "I10, INVALID, E78.5"
@@ -93,4 +98,20 @@ class TestCarePlanRequest:
     def test_additional_diagnoses_empty_allowed(self, valid_data):
         valid_data["additional_diagnoses"] = ""
         request = CarePlanRequest(**valid_data)
-        assert request.additional_diagnoses == ""
+        assert request.additional_diagnoses == []
+
+    # Medication history validation
+    def test_medication_history_valid_string(self, valid_data):
+        valid_data["medication_history"] = "Metformin, Lisinopril"
+        request = CarePlanRequest(**valid_data)
+        assert request.medication_history == ["Metformin", "Lisinopril"]
+
+    def test_medication_history_valid_list(self, valid_data):
+        valid_data["medication_history"] = ["Metformin", "Lisinopril"]
+        request = CarePlanRequest(**valid_data)
+        assert request.medication_history == ["Metformin", "Lisinopril"]
+
+    def test_medication_history_empty_allowed(self, valid_data):
+        valid_data["medication_history"] = ""
+        request = CarePlanRequest(**valid_data)
+        assert request.medication_history == []
