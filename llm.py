@@ -13,7 +13,8 @@ def generate_care_plan(data: CarePlanRequest) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise CarePlanGenerationError(
-            "Care plan generation is not configured. Please contact support."
+            "OPENAI_API_KEY environment variable is not set. "
+            "Please run: export OPENAI_API_KEY='your-api-key-here'"
         )
     
     client = OpenAI(api_key=api_key)
