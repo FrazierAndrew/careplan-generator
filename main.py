@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from database import init_db, get_all_care_plans
 from models import CarePlanRequest
 from services import create_care_plan, DuplicateSubmissionError, ProviderConflictError
+from llm import CarePlanGenerationError
 from pdf_utils import extract_text_from_pdf
 
 app = FastAPI(title="Care Plan Generator")
@@ -102,6 +103,17 @@ async def submit_care_plan(
         return JSONResponse(
             status_code=409,
             content={"success": False, "errors": [str(e)]}
+        )
+    except CarePlanGenerationError as e:
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "errors": [str(e)]}
+        )
+    except Exception:
+        # Catch-all for unexpected errors - don't expose internals
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "errors": ["An unexpected error occurred. Please try again or contact support."]}
         )
     
     return JSONResponse(content={

@@ -1,6 +1,7 @@
 """Integration tests using FastAPI TestClient."""
 import pytest
 import os
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 # Set up test database before importing app
@@ -12,14 +13,16 @@ from database import init_db, DATABASE_PATH
 
 @pytest.fixture(scope="module")
 def client():
-    """Create test client with fresh database."""
+    """Create test client with fresh database and mocked LLM."""
     # Remove test db if exists
     if DATABASE_PATH.exists():
         DATABASE_PATH.unlink()
     init_db()
     
-    with TestClient(app) as c:
-        yield c
+    # Mock the LLM to avoid needing real API key in tests
+    with patch("services.generate_care_plan", return_value="[Test Generated Care Plan]"):
+        with TestClient(app) as c:
+            yield c
     
     # Cleanup
     if DATABASE_PATH.exists():

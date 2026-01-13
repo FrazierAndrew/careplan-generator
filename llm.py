@@ -3,11 +3,18 @@ from openai import OpenAI
 from models import CarePlanRequest
 
 
+class CarePlanGenerationError(Exception):
+    """Raised when care plan generation fails."""
+    pass
+
+
 def generate_care_plan(data: CarePlanRequest) -> str:
-    """Generate a care plan using OpenAI."""
+    """Generate a care plan using OpenAI. Raises CarePlanGenerationError on failure."""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        return "[ERROR: OPENAI_API_KEY not set - care plan generation skipped]"
+        raise CarePlanGenerationError(
+            "Care plan generation is not configured. Please contact support."
+        )
     
     client = OpenAI(api_key=api_key)
     
@@ -47,5 +54,8 @@ Please generate a care plan with ONLY the following four sections:
             max_tokens=2000
         )
         return response.choices[0].message.content
-    except Exception as e:
-        return f"[ERROR generating care plan: {str(e)}]"
+    except Exception:
+        # Don't expose internal error details to users
+        raise CarePlanGenerationError(
+            "Failed to generate care plan. Please try again or contact support."
+        )
